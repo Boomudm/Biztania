@@ -6,8 +6,10 @@ import { assessRisk } from './riskService'
 describe('deterministic demo intelligence', () => {
   it('groups the eight nearby reports but excludes unrelated reports', () => {
     const cluster = buildDemoCluster(reports)
+    expect(reports).toHaveLength(25)
     expect(cluster).toHaveLength(8)
     expect(cluster.map(r => r.id)).not.toContain('R-201')
+    expect(cluster.map(r => r.id)).not.toContain('R-301')
   })
 
   it('produces the transparent competition-demo score', () => {
