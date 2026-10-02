@@ -32,30 +32,30 @@ import {
 import { anchor, observationLabels, reports } from "./data/reports";
 import { buildDemoCluster } from "./services/clusteringService";
 import { assessRisk } from "./services/riskService";
-import {
-  reportingIntegration,
-  type Submission,
-} from "./services/integrationService";
 import { analyzeIncident, type ConciergeAnalysis } from "./services/aiService";
-import type { Observation, Report } from "./types";
+import { evaluateDemoCluster } from "./services/evaluationService";
+import type { Report } from "./types";
 import { formatTime } from "./utils/format";
 
 type Screen =
-  | "home"
   | "report"
-  | "analysis"
+  | "citizen-success"
+  | "tracking"
+  | "officer-dashboard"
+  | "officer-reports"
+  | "officer-complete"
   | "incident"
   | "structured"
-  | "tracking"
   | "how";
+type Role = "citizen" | "officer";
 const cluster = buildDemoCluster(reports),
   otherReports = reports.filter((r) => !cluster.some((c) => c.id === r.id)),
   risk = assessRisk(cluster);
+const evaluation = evaluateDemoCluster();
 const Logo = () => (
   <div className="brand">
     <span className="logo">
       <Waves />
-      <Radar />
     </span>
     <span>
       <b>Eco-Alert</b>
@@ -246,36 +246,26 @@ function ClusterExplorer({
 function BottomNav({
   screen,
   go,
+  role,
 }: {
   screen: Screen;
   go: (s: Screen) => void;
+  role: Role;
 }) {
-  const active =
-    screen === "report" || screen === "analysis"
-      ? "report"
-      : screen === "incident" || screen === "structured"
-        ? "incident"
-        : screen === "tracking"
-          ? "tracking"
-          : null;
+  if (role === "officer") return null;
   return (
     <nav className="bottom-nav">
       <button
-        className={active === "report" ? "active" : ""}
+        className={screen === "report" ? "active" : ""}
         onClick={() => go("report")}
       >
         <Plus />
         <span>แจ้งเหตุ</span>
       </button>
       <button
-        className={active === "incident" ? "active" : ""}
-        onClick={() => go("incident")}
-      >
-        <CircleDot />
-        <span>เหตุการณ์</span>
-      </button>
-      <button
-        className={active === "tracking" ? "active" : ""}
+        className={
+          screen === "tracking" || screen === "citizen-success" ? "active" : ""
+        }
         onClick={() => go("tracking")}
       >
         <Clock3 />
@@ -287,57 +277,100 @@ function BottomNav({
 function Shell({
   screen,
   go,
+  role,
+  switchRole,
   children,
 }: {
   screen: Screen;
   go: (s: Screen) => void;
+  role: Role;
+  switchRole: (role: Role) => void;
   children: React.ReactNode;
 }) {
-  const active =
-    screen === "report" || screen === "analysis"
-      ? "report"
-      : screen === "incident" || screen === "structured"
-        ? "incident"
-        : screen === "tracking"
-          ? "tracking"
-          : null;
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${role}-shell`}>
       <header>
-        <button className="brand-button" onClick={() => go("home")}>
+        <button
+          className="brand-button"
+          onClick={() =>
+            go(role === "citizen" ? "report" : "officer-dashboard")
+          }
+        >
           <Logo />
         </button>
         <nav className="top-nav">
-          <button
-            className={active === "report" ? "active" : ""}
-            onClick={() => go("report")}
-          >
-            แจ้งเหตุ
-          </button>
-          <button
-            className={active === "incident" ? "active" : ""}
-            onClick={() => go("incident")}
-          >
-            เหตุการณ์
-          </button>
-          <button
-            className={active === "tracking" ? "active" : ""}
-            onClick={() => go("tracking")}
-          >
-            ติดตาม
-          </button>
+          {role === "citizen" ? (
+            <>
+              <button
+                className={screen === "report" ? "active" : ""}
+                onClick={() => go("report")}
+              >
+                แจ้งเหตุ
+              </button>
+              <button
+                className={
+                  screen === "tracking" || screen === "citizen-success"
+                    ? "active"
+                    : ""
+                }
+                onClick={() => go("tracking")}
+              >
+                ติดตาม
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                className={screen === "officer-dashboard" ? "active" : ""}
+                onClick={() => go("officer-dashboard")}
+              >
+                ภาพรวม
+              </button>
+              <button
+                className={
+                  screen === "incident" || screen === "structured"
+                    ? "active"
+                    : ""
+                }
+                onClick={() => go("incident")}
+              >
+                เหตุการณ์
+              </button>
+              <button
+                className={screen === "officer-reports" ? "active" : ""}
+                onClick={() => go("officer-reports")}
+              >
+                รายงานประชาชน
+              </button>
+              <button
+                className={screen === "how" ? "active" : ""}
+                onClick={() => go("how")}
+              >
+                ระบบ AI
+              </button>
+            </>
+          )}
         </nav>
         <div className="header-actions">
-          <Badge tone="blue">
-            <CircleDot /> โหมดสาธิต
-          </Badge>
-          <button className="text-btn" onClick={() => go("how")}>
-            <Network /> AI ทำงานอย่างไร
-          </button>
+          <div className="role-switch" aria-label="สลับบทบาทสำหรับ Demo">
+            <small>Demo Mode</small>
+            <button
+              className={role === "citizen" ? "active" : ""}
+              onClick={() => switchRole("citizen")}
+            >
+              ประชาชน
+            </button>
+            <button
+              className={role === "officer" ? "active" : ""}
+              onClick={() => switchRole("officer")}
+            >
+              เจ้าหน้าที่
+            </button>
+          </div>
         </div>
       </header>
       <main>{children}</main>
-      <BottomNav screen={screen} go={go} />
+      <BottomNav screen={screen} go={go} role={role} />
     </div>
   );
 }
@@ -418,22 +451,15 @@ function HomePage({ go }: { go: (s: Screen) => void }) {
 }
 
 function ReportPage({ go }: { go: (s: Screen) => void }) {
-  const [selected, setSelected] = useState<Observation[]>(anchor.observations);
-  const toggle = (o: Observation) =>
-    setSelected((s) => (s.includes(o) ? s.filter((x) => x !== o) : [...s, o]));
   return (
-    <div className="page narrow">
-      <Journey step={1} />
-      <div className="page-title">
-        <button className="icon-btn" onClick={() => go("home")}>
-          <ArrowLeft />
-        </button>
+    <div className="page narrow citizen-report-page">
+      <div className="citizen-report-head">
         <div>
-          <span>รายงานใหม่</span>
-          <h1>คุณพบอะไรผิดปกติ?</h1>
+          <span>Eco-Alert · แจ้งเหตุ</span>
+          <h1>พบสิ่งผิดปกติ?</h1>
           <p className="page-intro">
-            ส่งสิ่งที่คุณพบมาให้ Eco-Alert AI เราจะช่วยตรวจสอบบริบท
-            เชื่อมโยงรายงาน และเตรียมข้อมูลสำหรับเจ้าหน้าที่
+            ส่งภาพสิ่งที่คุณพบ Eco-Alert AI จะช่วยตรวจสอบและจัดข้อมูล
+            เพื่อให้เจ้าหน้าที่ตรวจสอบต่อ
           </p>
         </div>
       </div>
@@ -441,14 +467,13 @@ function ReportPage({ go }: { go: (s: Screen) => void }) {
         <section className="upload-card">
           <img src="/assets/canal-evidence.png" />
           <div className="photo-label">
-            <Check /> เพิ่มภาพตัวอย่างแล้ว
+            <Check /> เลือกภาพแล้ว
           </div>
           <button>
-            <Upload /> เปลี่ยนภาพ
+            <Upload /> ถ่ายภาพหรือเลือกภาพใหม่
           </button>
         </section>
         <section className="form-card">
-          <Concierge />
           <div className="capture-row">
             <div>
               <MapPin />
@@ -465,30 +490,28 @@ function ReportPage({ go }: { go: (s: Screen) => void }) {
               </span>
             </div>
           </div>
-          <label>รายละเอียดที่พบ</label>
-          <textarea defaultValue={anchor.description} />
           <label>
-            สิ่งที่สังเกตเห็น <small>เลือกได้หลายข้อ</small>
+            เล่าเพิ่มเติมว่าเกิดอะไรขึ้น <small>(ไม่บังคับ)</small>
           </label>
-          <div className="chips">
-            {Object.entries(observationLabels).map(([o, l]) => (
-              <button
-                key={o}
-                className={
-                  selected.includes(o as Observation) ? "selected" : ""
-                }
-                onClick={() => toggle(o as Observation)}
-              >
-                {selected.includes(o as Observation) && <Check />}
-                {l}
-              </button>
-            ))}
+          <textarea
+            defaultValue={anchor.description}
+            placeholder="เช่น น้ำมีกลิ่นผิดปกติ หรือพบปลาตาย"
+          />
+          <div className="citizen-ai-note">
+            <Sparkles />
+            <span>
+              <b>ไม่ต้องเลือกประเภทเหตุ</b>
+              <small>Eco-Alert AI จะช่วยจัดข้อมูลให้เจ้าหน้าที่</small>
+            </span>
           </div>
           <div className="privacy">
-            <Info /> ตำแหน่งและหลักฐานใช้สำหรับเหตุการณ์สาธิตนี้เท่านั้น
+            <Info /> ระบบใช้ภาพ ตำแหน่ง และเวลาเพื่อส่งต่อให้เจ้าหน้าที่ตรวจสอบ
           </div>
-          <button className="primary full" onClick={() => go("analysis")}>
-            <Sparkles /> ให้ Eco-Alert AI ตรวจสอบเหตุนี้ <ArrowRight />
+          <button
+            className="primary full citizen-submit"
+            onClick={() => go("citizen-success")}
+          >
+            <Send /> ส่งรายงาน <ArrowRight />
           </button>
         </section>
       </div>
@@ -778,6 +801,177 @@ function ReportsSheet({
   );
 }
 
+function OfficerWorkflow({
+  activeCase,
+  openReport,
+  returnToMain,
+}: {
+  activeCase: DemoCase;
+  openReport: () => void;
+  returnToMain: () => void;
+}) {
+  return (
+    <section className="officer-workflow above-fold">
+      <div className="workflow-heading">
+        <span>เจ้าหน้าที่ต้องทำอะไรต่อ?</span>
+        <h2>ตรวจหลักฐาน แล้วเปิดรายงานที่ AI เตรียมไว้</h2>
+        <p>
+          คลิกหมุดบนแผนที่เพื่อตรวจหลักฐาน เมื่อพร้อมแล้วให้ตรวจรายงานก่อนส่งต่อ
+        </p>
+      </div>
+      <div className="workflow-steps">
+        <div className="done">
+          <span>
+            <Check />
+          </span>
+          <b>1. ตรวจเหตุและหลักฐาน</b>
+        </div>
+        <div className="active">
+          <span>2</span>
+          <b>2. ตรวจรายงาน</b>
+        </div>
+        <div>
+          <span>3</span>
+          <b>3. ส่งต่อ</b>
+        </div>
+      </div>
+      <div className="workflow-action">
+        {activeCase.id === "PB-024" ? (
+          <button className="primary big" onClick={openReport}>
+            <FileText /> ตรวจรายงานที่ AI เตรียมไว้ <ArrowRight />
+          </button>
+        ) : (
+          <button className="primary big" onClick={returnToMain}>
+            กลับไปเคสหลัก PB-024 <ArrowRight />
+          </button>
+        )}
+        <small>
+          AI เตรียมข้อมูลแล้ว แต่เจ้าหน้าที่ต้องตรวจและเป็นผู้กดส่งต่อเอง
+        </small>
+      </div>
+    </section>
+  );
+}
+
+function ConciergeWorkbench({
+  activeCase,
+  caseReports,
+}: {
+  activeCase: DemoCase;
+  caseReports: Report[];
+}) {
+  const representative =
+    caseReports.find((report) => report.image) || caseReports[0];
+  const context =
+    activeCase.id === "PB-024"
+      ? [
+          "โรงงานจำลอง 420 ม.",
+          "ชั้นข้อมูลพื้นที่น้ำท่วม",
+          "ประวัติเหตุใกล้เคียง 2 เหตุ",
+        ]
+      : activeCase.id === "PB-031"
+        ? ["ตลาดฝั่งตะวันตก", "คลองระบายน้ำ", "รายงานน้ำเสียในช่วง 26 นาที"]
+        : [
+            "ถนนเขตอุตสาหกรรม",
+            "จุดรายงานซ้ำริมถนน",
+            "ควันและกลิ่นไหม้ในช่วง 27 นาที",
+          ];
+  return (
+    <section className="concierge-workbench">
+      <div className="concierge-workbench-head">
+        <div>
+          <span>
+            <Sparkles /> AI CONCIERGE WORKBENCH
+          </span>
+          <h2>จากรายงานดิบ สู่ข้อมูลที่พร้อมให้เจ้าหน้าที่ตรวจสอบ</h2>
+          <p>
+            นี่คืองานข้อมูลที่ Eco-Alert AI ทำให้ในเคส {activeCase.id} —
+            ไม่ได้ตัดสินใจแทนเจ้าหน้าที่
+          </p>
+        </div>
+        <Badge tone={activeCase.score >= 70 ? "red" : "amber"}>
+          จัดลำดับ {activeCase.score}/100
+        </Badge>
+      </div>
+      <div className="concierge-transform">
+        <article className="concierge-input">
+          <small>INPUT · หลักฐานดิบ</small>
+          <b>{caseReports.length} รายงานประชาชน</b>
+          <blockquote>“{representative?.description}”</blockquote>
+          <span>ข้อความ · GPS · เวลา · ภาพถ่าย</span>
+        </article>
+        <div className="concierge-orchestration">
+          <div>
+            <i>1</i>
+            <span>
+              <b>เข้าใจหลักฐาน</b>
+              <small>สกัดข้อมูลที่สังเกตได้: {activeCase.signals}</small>
+            </span>
+            <Badge>AI</Badge>
+          </div>
+          <div>
+            <i>2</i>
+            <span>
+              <b>ค้นและเชื่อมรายงาน</b>
+              <small>
+                พบ {caseReports.length} จาก {reports.length} รายงานที่ตำแหน่ง
+                เวลา และความหมายสัมพันธ์กัน
+              </small>
+            </span>
+            <Badge tone="blue">AI + Rule</Badge>
+          </div>
+          <div>
+            <i>3</i>
+            <span>
+              <b>ดึงบริบทที่เกี่ยวข้อง</b>
+              <small>{context.join(" · ")}</small>
+            </span>
+            <Badge tone="amber">Data retrieval</Badge>
+          </div>
+          <div>
+            <i>4</i>
+            <span>
+              <b>จัดลำดับและเตรียม brief</b>
+              <small>คำนวณคะแนนแบบโปร่งใส พร้อมเหตุผลและแหล่งข้อมูล</small>
+            </span>
+            <Badge tone="blue">Rule + AI</Badge>
+          </div>
+        </div>
+        <article className="concierge-output">
+          <small>OUTPUT · พร้อมตรวจสอบ</small>
+          <b>Officer brief #{activeCase.id}</b>
+          <ul>
+            <li>{caseReports.length} หลักฐานถูกรวมไว้ในเคสเดียว</li>
+            <li>มี observation และ context พร้อมที่มา</li>
+            <li>มีเหตุผลประกอบคะแนน {activeCase.score}/100</li>
+          </ul>
+          <span>
+            <ShieldCheck /> เจ้าหน้าที่เป็นผู้ตรวจสอบและส่งต่อ
+          </span>
+        </article>
+      </div>
+      <div className="concierge-evidence-strip">
+        <b>หลักฐานที่รองรับข้อเสนอแนะ</b>
+        {context.map((item) => (
+          <span key={item}>
+            <Check /> {item}
+          </span>
+        ))}
+        <span>
+          <Check /> Cluster confidence {activeCase.confidence}%
+        </span>
+      </div>
+      <div className="concierge-disclaimer">
+        <Info />
+        <span>
+          <b>ขอบเขตของ AI</b> ไม่ระบุชนิดสารเคมี ไม่ยืนยันความรุนแรง
+          และไม่สั่งการหน่วยงานอัตโนมัติ
+        </span>
+      </div>
+    </section>
+  );
+}
+
 function IncidentPage({ go }: { go: (s: Screen) => void }) {
   const [selected, setSelected] = useState<Report | null>(null),
     [sheet, setSheet] = useState<"ai" | "reports" | null>(null),
@@ -832,6 +1026,11 @@ function IncidentPage({ go }: { go: (s: Screen) => void }) {
           <Sparkles /> ดูว่า AI เชื่อมโยงอย่างไร
         </button>
       </section>
+      <OfficerWorkflow
+        activeCase={activeCase}
+        openReport={() => go("structured")}
+        returnToMain={() => changeCase(demoCases[0])}
+      />
       <div className="incident-layout">
         <section className="map-panel">
           <div className={`map-bg case-${activeCase.id.toLowerCase()}`}>
@@ -939,6 +1138,7 @@ function IncidentPage({ go }: { go: (s: Screen) => void }) {
         <List /> ดูรายงานใน {activeCase.id} ทั้งหมด {caseReports.length} รายการ{" "}
         <ChevronRight />
       </button>
+      <ConciergeWorkbench activeCase={activeCase} caseReports={caseReports} />
       <section className="mock-overview">
         <div className="section-heading">
           <span>ชุดข้อมูลจำลองทั้งหมด</span>
@@ -1017,24 +1217,13 @@ function IncidentPage({ go }: { go: (s: Screen) => void }) {
             <li>อยู่ใกล้พื้นที่อุตสาหกรรมและพื้นที่น้ำท่วม</li>
             <li>หลายรายงานพบปลาตายและกลิ่นฉุน</li>
           </ul>
+          <small className="prototype-score-note">
+            คะแนนจัดลำดับความสำคัญสำหรับ Prototype
+            ไม่ใช่ค่าความรุนแรงทางวิทยาศาสตร์
+          </small>
         </div>
       </section>
       <SafetyNote />
-      <div className="incident-cta prepared">
-        <div>
-          <Badge>
-            <Check /> ดำเนินการแล้ว
-          </Badge>
-          <b>Eco-Alert AI เตรียมรายงานสำหรับเจ้าหน้าที่แล้ว</b>
-          <span>
-            จัดรูปหลักฐาน พิกัด เวลา รายงานที่เกี่ยวข้อง บริบท คะแนน
-            และเหตุผลไว้ครบ
-          </span>
-        </div>
-        <button className="primary big" onClick={() => go("structured")}>
-          <FileText /> ตรวจสอบและส่งรายงาน <ArrowRight />
-        </button>
-      </div>
       {sheet === "ai" && <AiSheet close={() => setSheet(null)} />}{" "}
       {sheet === "reports" && (
         <ReportsSheet
@@ -1052,13 +1241,18 @@ function StructuredPage({ go }: { go: (s: Screen) => void }) {
   return (
     <div className="page narrow-report">
       <Journey step={4} />
+      <div className="structured-next-step">
+        <span>ขั้นตอน 2 จาก 3</span>
+        <b>ตรวจข้อมูลด้านล่าง แล้วกด “ยืนยันและส่งต่อ”</b>
+        <small>หากข้อมูลยังไม่ถูกต้อง ให้กลับไปยังเหตุการณ์ก่อนส่งต่อ</small>
+      </div>
       <div className="page-title">
         <button className="icon-btn" onClick={() => go("incident")}>
           <ArrowLeft />
         </button>
         <div>
           <span>Eco-Alert AI ดำเนินการให้แล้ว</span>
-          <h1>เตรียมรายงานสำหรับเจ้าหน้าที่เรียบร้อย</h1>
+          <h1>รายงานที่ Eco-Alert AI เตรียมไว้</h1>
           <p className="page-intro">
             ตรวจสอบข้อมูลก่อนส่งเข้าสู่ระบบรับเรื่องจำลอง
           </p>
@@ -1124,6 +1318,45 @@ function StructuredPage({ go }: { go: (s: Screen) => void }) {
             จึงควรได้รับการตรวจสอบภาคสนามโดยเร็ว
           </p>
         </section>
+        <section className="routing-card">
+          <div className="routing-head">
+            <span>
+              <Sparkles /> AI Concierge แนะนำปลายทาง
+            </span>
+            <Badge tone="blue">Routing จำลอง</Badge>
+          </div>
+          <div className="routing-primary">
+            <div className="routing-icon">
+              <Send />
+            </div>
+            <span>
+              <small>หน่วยงานหลัก</small>
+              <b>สำนักงานสิ่งแวดล้อมและควบคุมมลพิษในพื้นที่</b>
+              <p>ตรวจคุณภาพน้ำ · เก็บตัวอย่าง · ประสานห้องปฏิบัติการ</p>
+            </span>
+            <Badge>แนะนำ</Badge>
+          </div>
+          <div className="routing-support">
+            <span>
+              <Users />
+              <b>องค์กรปกครองส่วนท้องถิ่น</b>
+              <small>ประสานพื้นที่และแจ้งเตือนประชาชน</small>
+            </span>
+            <span>
+              <Factory />
+              <b>หน่วยงานกำกับโรงงานในพื้นที่</b>
+              <small>ตรวจสอบโรงงานและเอกสารที่เกี่ยวข้อง</small>
+            </span>
+          </div>
+          <div className="routing-note">
+            <ShieldCheck />
+            <span>
+              <b>เจ้าหน้าที่เป็นผู้ยืนยันปลายทาง</b> AI
+              แนะนำจากประเภทเหตุและความสามารถของหน่วยงาน
+              แต่ไม่ส่งหรือสั่งการอัตโนมัติ
+            </span>
+          </div>
+        </section>
         <SafetyNote />
         <div className="doc-source">
           <Database /> แหล่งข้อมูล: รายงานประชาชน · GPS · เวลา · Mock factory
@@ -1132,55 +1365,286 @@ function StructuredPage({ go }: { go: (s: Screen) => void }) {
       </article>
       <div className="submit-bar">
         <div>
-          <Badge tone="blue">ระบบเชื่อมต่อจำลอง</Badge>
-          <p>Eco-Alert AI → ระบบรับเรื่องเดิม</p>
+          <Badge tone="blue">ขั้นตอนสุดท้าย</Badge>
+          <p>
+            <b>ตรวจข้อมูลครบแล้วใช่ไหม?</b>
+            <br />
+            ส่งแบบจำลองไปยังสำนักงานสิ่งแวดล้อมและควบคุมมลพิษในพื้นที่
+          </p>
         </div>
-        <button className="primary big" onClick={() => go("tracking")}>
-          <Send /> ยืนยันและส่งรายงาน <ArrowRight />
+        <button className="secondary" onClick={() => go("incident")}>
+          <ArrowLeft /> กลับไปตรวจเหตุการณ์
+        </button>
+        <button className="primary big" onClick={() => go("officer-complete")}>
+          <Send /> ยืนยันปลายทางและส่งต่อ <ArrowRight />
         </button>
       </div>
     </div>
   );
 }
 
+function OfficerComplete({ go }: { go: (s: Screen) => void }) {
+  return (
+    <div className="page officer-complete-page">
+      <div className="success-icon done">
+        <Check />
+      </div>
+      <Badge>ส่งต่อแล้ว · จบขั้นตอน Demo</Badge>
+      <h1>เตรียมส่งต่อไปยังหน่วยงานหลักแล้ว</h1>
+      <p>
+        เหตุการณ์ #PB-024
+        ถูกส่งผ่านระบบจำลองไปยังสำนักงานสิ่งแวดล้อมและควบคุมมลพิษในพื้นที่
+        และเปลี่ยนสถานะเป็น “รอดำเนินการ”
+      </p>
+      <div className="completion-summary">
+        <span>
+          <Check /> ตรวจรายงานที่ AI เตรียมแล้ว
+        </span>
+        <span>
+          <Check /> ระบุปลายทางและเตรียมส่งต่อแล้ว (Mock)
+        </span>
+      </div>
+      <div className="officer-complete-actions">
+        <button className="primary" onClick={() => go("officer-dashboard")}>
+          กลับหน้าภาพรวม <ArrowRight />
+        </button>
+        <button className="secondary" onClick={() => go("incident")}>
+          ดูเหตุการณ์อีกครั้ง
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CitizenSuccessPage({ go }: { go: (s: Screen) => void }) {
+  return (
+    <div className="page citizen-success-page">
+      <div className="success-icon done">
+        <Check />
+      </div>
+      <span className="citizen-kicker">ส่งข้อมูลสำเร็จ</span>
+      <h1>รับรายงานแล้ว</h1>
+      <p>Eco-Alert AI กำลังช่วยจัดข้อมูล เพื่อส่งต่อให้เจ้าหน้าที่ตรวจสอบ</p>
+      <div className="citizen-reference">
+        <span>หมายเลขรายงาน</span>
+        <b>R-10824</b>
+        <small>ใช้หมายเลขนี้เพื่อติดตามสถานะ</small>
+      </div>
+      <div className="citizen-progress">
+        <div className="done">
+          <span>
+            <Check />
+          </span>
+          <b>รับรายงาน</b>
+        </div>
+        <div className="active">
+          <span>
+            <CircleDot />
+          </span>
+          <b>กำลังตรวจสอบข้อมูล</b>
+        </div>
+        <div>
+          <span />
+          <b>รอเจ้าหน้าที่ตรวจสอบ</b>
+        </div>
+      </div>
+      <button className="primary" onClick={() => go("tracking")}>
+        ติดตามสถานะ <ChevronRight />
+      </button>
+    </div>
+  );
+}
+
+function OfficerDashboard({ go }: { go: (s: Screen) => void }) {
+  return (
+    <div className="page officer-page officer-dashboard">
+      <section className="officer-welcome">
+        <div>
+          <span>Eco-Alert AI</span>
+          <h1>ศูนย์วิเคราะห์เหตุสำหรับเจ้าหน้าที่</h1>
+          <p>
+            เหตุที่ AI จัดลำดับให้ตรวจสอบก่อน
+            โดยเจ้าหน้าที่เป็นผู้ตัดสินใจดำเนินการ
+          </p>
+        </div>
+        <Badge tone="blue">
+          <ShieldCheck /> Officer Console
+        </Badge>
+      </section>
+      <section className="ops-metrics">
+        <div>
+          <AlertTriangle />
+          <span>
+            <small>เหตุการณ์เร่งด่วน</small>
+            <b>3</b>
+          </span>
+        </div>
+        <div>
+          <Clock3 />
+          <span>
+            <small>รอตรวจสอบ</small>
+            <b>7</b>
+          </span>
+        </div>
+        <div>
+          <FileText />
+          <span>
+            <small>รายงานวันนี้</small>
+            <b>24</b>
+          </span>
+        </div>
+      </section>
+      <div className="section-heading">
+        <span>AI PRIORITY QUEUE</span>
+        <h2>เหตุที่ควรตรวจสอบก่อน</h2>
+      </div>
+      <section className="priority-incident">
+        <div className="priority-rank">01</div>
+        <div className="priority-copy">
+          <div>
+            <span>เหตุการณ์ #PB-024 · ปราจีนบุรี</span>
+            <Badge tone="red">เร่งด่วนสูง</Badge>
+          </div>
+          <h2>8 รายงานที่อาจเกี่ยวข้องกัน</h2>
+          <p>
+            AI พบรายงานหลายรายการที่มีความสัมพันธ์กันด้านตำแหน่ง เวลา
+            และลักษณะเหตุ
+          </p>
+          <div className="ai-work-summary">
+            <b>
+              <Sparkles /> Eco-Alert AI ช่วยตรวจสอบเหตุนี้
+            </b>
+            <span>
+              <Check /> อ่านและจัดโครงสร้างรายงานประชาชน
+            </span>
+            <span>
+              <Check /> พบรายงานที่อาจเกี่ยวข้อง 8 รายการ
+            </span>
+            <span>
+              <Check /> เชื่อมโยงบริบทและประเมินความเร่งด่วน
+            </span>
+            <span>
+              <Check /> เตรียมข้อมูลสำหรับเจ้าหน้าที่
+            </span>
+          </div>
+        </div>
+        <div className="priority-score">
+          <small>คะแนนจัดลำดับ</small>
+          <b>
+            87 <em>/ 100</em>
+          </b>
+          <button className="primary" onClick={() => go("incident")}>
+            ตรวจสอบเหตุการณ์ <ArrowRight />
+          </button>
+        </div>
+      </section>
+      <section className="secondary-incidents">
+        {demoCases.slice(1).map((item) => (
+          <div key={item.id}>
+            <span>{item.id}</span>
+            <b>{item.title}</b>
+            <small>
+              {item.reportIds.length} รายงาน · {item.area}
+            </small>
+            <Badge tone={item.score >= 70 ? "red" : "amber"}>
+              {item.level}
+            </Badge>
+          </div>
+        ))}
+      </section>
+    </div>
+  );
+}
+
+function OfficerReports({ go }: { go: (s: Screen) => void }) {
+  return (
+    <div className="page officer-page officer-inbox">
+      <div className="officer-page-head">
+        <div>
+          <span>OPERATIONAL INBOX</span>
+          <h1>รายงานจากประชาชน</h1>
+          <p>
+            หลักฐานดิบที่ Eco-Alert AI จัดโครงสร้างและเชื่อมโยงกับเหตุการณ์แล้ว
+          </p>
+        </div>
+        <Badge tone="blue">{reports.length} รายงาน</Badge>
+      </div>
+      <div className="transformation-labels">
+        <span>หลักฐานจากประชาชน</span>
+        <ArrowRight />
+        <span>AI สกัดข้อมูล</span>
+        <ArrowRight />
+        <span>เหตุการณ์ที่เกี่ยวข้อง</span>
+      </div>
+      <section className="inbox-list">
+        {reports.slice(0, 10).map((report) => {
+          const incident = demoCases.find((item) =>
+            item.reportIds.includes(report.id),
+          );
+          return (
+            <article key={report.id} className="inbox-report">
+              <div className="raw-report">
+                <time>{formatTime(report.timestamp)} น.</time>
+                {report.image ? (
+                  <img src={report.image} />
+                ) : (
+                  <div className="inbox-placeholder">
+                    <FileText />
+                  </div>
+                )}
+                <span>
+                  <b>{report.id}</b>
+                  <p>“{report.description}”</p>
+                </span>
+              </div>
+              <div className="structured-observation">
+                <small>
+                  <Sparkles /> AI ตรวจพบ
+                </small>
+                <div className="tags">
+                  {report.observations.map((o) => (
+                    <span key={o}>{observationLabels[o]}</span>
+                  ))}
+                </div>
+              </div>
+              <div className="linked-incident">
+                {incident ? (
+                  <>
+                    <Badge>เชื่อมโยงแล้ว</Badge>
+                    <b>เหตุการณ์ #{incident.id}</b>
+                    <small>{incident.area}</small>
+                    <button className="link" onClick={() => go("incident")}>
+                      ตรวจสอบ <ChevronRight />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Badge tone="blue">รอจัดกลุ่ม</Badge>
+                    <b>ยังไม่พบเหตุที่เกี่ยวข้อง</b>
+                  </>
+                )}
+              </div>
+            </article>
+          );
+        })}
+      </section>
+    </div>
+  );
+}
+
 function TrackingPage({ go }: { go: (s: Screen) => void }) {
-  const [submission, setSubmission] = useState<Submission | null>(null);
-  useEffect(() => {
-    reportingIntegration
-      .createIssue({ incident: "PB-024" })
-      .then(setSubmission);
-  }, []);
-  const submitted = Boolean(submission);
   const timeline = [
     ["รับรายงานแล้ว", true],
-    ["AI ตรวจสอบเบื้องต้นแล้ว", true],
-    ["พบเหตุการณ์ที่เกี่ยวข้อง", true],
-    ["เตรียมรายงานแล้ว", submitted],
-    ["รอการตรวจสอบจากเจ้าหน้าที่", false],
+    ["AI จัดข้อมูลเบื้องต้นแล้ว", true],
+    ["เจ้าหน้าที่กำลังตรวจสอบ", true],
+    ["ดำเนินการ", false],
+    ["ปิดเหตุ", false],
   ];
   return (
-    <div className="page success-page">
-      <div className={`success-icon ${submitted ? "done" : ""}`}>
-        {submitted ? <Check /> : <Send />}
-      </div>
-      <Badge tone="blue">การส่งข้อมูลจำลองสำหรับ Prototype</Badge>
-      <h1>
-        {submitted ? "เตรียมการส่งรายงานสำเร็จ" : "กำลังเตรียมการส่งรายงาน…"}
-      </h1>
-      <p>
-        {submitted
-          ? "ระบบจำลองได้รับรายงานแล้ว ยังไม่มีการส่งข้อมูลไปยังหน่วยงานจริง"
-          : "กำลังส่งผ่านตัวเชื่อมต่อระบบจำลอง"}
-      </p>
-      {submission && (
-        <div className="tracking-id">
-          <span>หมายเลขติดตาม</span>
-          <b>{submission.trackingId}</b>
-          <small>
-            {submission.statusLabelTh || "สถานะจำลองสำหรับ Prototype"}
-          </small>
-        </div>
-      )}
+    <div className="page success-page citizen-tracking-page">
+      <span className="citizen-kicker">ติดตามรายงาน</span>
+      <h1>รายงาน #R-10824</h1>
+      <p>สถานะล่าสุดจากเจ้าหน้าที่</p>
       <div className="timeline">
         {timeline.map(([label, active], i) => (
           <div key={String(label)} className={active ? "active" : ""}>
@@ -1192,13 +1656,9 @@ function TrackingPage({ go }: { go: (s: Screen) => void }) {
           </div>
         ))}
       </div>
-      <SafetyNote />
       <div className="success-actions">
-        <button className="primary" onClick={() => go("incident")}>
-          ดูเหตุการณ์ <ChevronRight />
-        </button>
-        <button className="secondary" onClick={() => go("home")}>
-          กลับหน้าหลัก
+        <button className="primary" onClick={() => go("report")}>
+          แจ้งเหตุใหม่
         </button>
       </div>
     </div>
@@ -1207,9 +1667,9 @@ function TrackingPage({ go }: { go: (s: Screen) => void }) {
 
 function HowPage({ go }: { go: (s: Screen) => void }) {
   return (
-    <div className="page how-page">
+    <div className="page officer-page how-page ai-system-page">
       <div className="page-title">
-        <button className="icon-btn" onClick={() => go("home")}>
+        <button className="icon-btn" onClick={() => go("officer-dashboard")}>
           <X />
         </button>
         <div>
@@ -1218,8 +1678,8 @@ function HowPage({ go }: { go: (s: Screen) => void }) {
         </div>
       </div>
       <p className="how-lead">
-        ระบบเชื่อมการทำความเข้าใจข้อมูล การค้นคืนบริบท การจัดกลุ่ม การให้คะแนน
-        และการเชื่อมต่อระบบเดิมเข้าด้วยกัน
+        แสดงให้ชัดว่าแต่ละขั้นใช้ Generative AI, deterministic logic,
+        ข้อมูลจำลอง หรือจุดเชื่อมต่อระบบภายนอกอย่างไร
       </p>
       <div className="architecture">
         {[
@@ -1240,6 +1700,94 @@ function HowPage({ go }: { go: (s: Screen) => void }) {
           </div>
         ))}
       </div>
+      <section className="system-matrix">
+        <div className="matrix-head">
+          <span>องค์ประกอบ</span>
+          <span>วิธีทำงาน</span>
+          <span>สถานะใน Prototype</span>
+        </div>
+        {[
+          [
+            "เข้าใจหลักฐาน",
+            "OpenAI multimodal + structured output",
+            "AI จริง · มี deterministic fallback",
+            "ai",
+          ],
+          [
+            "ค้นรายงานใกล้เคียง",
+            "Provider adapter / API boundary",
+            "Mock dataset · พร้อมเปลี่ยน provider",
+            "mock",
+          ],
+          [
+            "จัดกลุ่มเหตุการณ์",
+            "Spatial 40% · Temporal 30% · Semantic 30%",
+            "Deterministic prototype logic",
+            "rule",
+          ],
+          [
+            "ประเมินความเร่งด่วน",
+            "Transparent weighted risk factors",
+            "Rule-based · เจ้าหน้าที่ต้องยืนยัน",
+            "rule",
+          ],
+          [
+            "อธิบายเหตุผล",
+            "Grounded AI explanation จากผลคำนวณ",
+            "AI จริง · ห้ามวินิจฉัยสารเคมี",
+            "ai",
+          ],
+          [
+            "ส่งเข้าระบบเดิม",
+            "createIssue / receiveIssueUpdate adapter",
+            "Mock connector · API-ready",
+            "external",
+          ],
+        ].map(([name, method, status, tone]) => (
+          <div className="matrix-row" key={name}>
+            <b>{name}</b>
+            <span>{method}</span>
+            <Badge
+              tone={
+                tone === "ai" ? "green" : tone === "mock" ? "amber" : "blue"
+              }
+            >
+              {status}
+            </Badge>
+          </div>
+        ))}
+      </section>
+      <section className="evaluation-card">
+        <div>
+          <span>REPRODUCIBLE EVALUATION</span>
+          <h2>ผลทดสอบการจัดกลุ่ม PB-024</h2>
+          <p>{evaluation.scopeLabelTh}</p>
+        </div>
+        <div className="evaluation-metrics">
+          <span>
+            <b>{evaluation.precision}%</b>Precision
+          </span>
+          <span>
+            <b>{evaluation.recall}%</b>Recall
+          </span>
+          <span>
+            <b>{evaluation.f1}%</b>F1 score
+          </span>
+          <span>
+            <b>{evaluation.datasetSize}</b>รายงานทดสอบ
+          </span>
+        </div>
+        <div className="evaluation-confusion">
+          <span>รวมถูก {evaluation.truePositive}</span>
+          <span>รวมผิด {evaluation.falsePositive}</span>
+          <span>ตกหล่น {evaluation.falseNegative}</span>
+          <span>แยกถูก {evaluation.trueNegative}</span>
+        </div>
+        <small>
+          <Info /> ตัวเลขสูงเพราะเป็น deterministic synthetic scenario สำหรับ
+          regression test ยังต้องทดสอบกับข้อมูลจริงก่อนใช้งานภาคสนาม
+        </small>
+      </section>
       <div className="principles">
         <section>
           <h2>
@@ -1267,30 +1815,42 @@ function HowPage({ go }: { go: (s: Screen) => void }) {
           </div>
         </section>
       </div>
-      <button className="primary" onClick={() => go("report")}>
-        ทดลองแจ้งเหตุ <ArrowRight />
-      </button>
+      <div className="system-actions">
+        <button className="secondary" onClick={() => go("officer-dashboard")}>
+          <ArrowLeft /> กลับหน้าภาพรวม
+        </button>
+        <button className="primary" onClick={() => go("incident")}>
+          เริ่ม Demo ตรวจเหตุการณ์ <ArrowRight />
+        </button>
+      </div>
     </div>
   );
 }
 
 export function App() {
-  const [screen, setScreen] = useState<Screen>("home");
+  const [role, setRole] = useState<Role>("citizen");
+  const [screen, setScreen] = useState<Screen>("report");
+  const switchRole = (nextRole: Role) => {
+    setRole(nextRole);
+    setScreen(nextRole === "citizen" ? "report" : "officer-dashboard");
+  };
   const view = useMemo(
     () =>
       ({
-        home: <HomePage go={setScreen} />,
         report: <ReportPage go={setScreen} />,
-        analysis: <AnalysisPage go={setScreen} />,
+        "citizen-success": <CitizenSuccessPage go={setScreen} />,
+        tracking: <TrackingPage go={setScreen} />,
+        "officer-dashboard": <OfficerDashboard go={setScreen} />,
+        "officer-reports": <OfficerReports go={setScreen} />,
+        "officer-complete": <OfficerComplete go={setScreen} />,
         incident: <IncidentPage go={setScreen} />,
         structured: <StructuredPage go={setScreen} />,
-        tracking: <TrackingPage go={setScreen} />,
         how: <HowPage go={setScreen} />,
       })[screen],
     [screen],
   );
   return (
-    <Shell screen={screen} go={setScreen}>
+    <Shell screen={screen} go={setScreen} role={role} switchRole={switchRole}>
       {view}
     </Shell>
   );

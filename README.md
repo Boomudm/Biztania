@@ -7,7 +7,7 @@
 ```text
 Citizen
   ↓
-Evidence (text, observation chips, image, GPS, time)
+Evidence (optional text, image, GPS, time)
   ↓
 AI Evidence Understanding                    [REAL when configured / deterministic fallback]
   ↓
@@ -62,6 +62,21 @@ The React frontend never receives an OpenAI or Traffy secret. It calls the local
 Clustering uses prototype assumptions: spatial `0.40`, temporal `0.30`, and normalized semantic overlap `0.30`. Environmental context does not change cluster membership; it is used separately by the urgency engine.
 
 The urgency score is calculated in application code, not invented by an LLM. The seeded scenario returns `87/100`, high priority. These weights are prototype prioritization assumptions, not scientific contamination thresholds.
+
+## Reproducible prototype evaluation
+
+`evaluateDemoCluster()` measures the PB-024 binary cluster against labels for all 25 seeded reports. The test reports precision, recall, F1, true/false positives, and false negatives. This is a deterministic synthetic regression benchmark—not field validation or evidence of real-world model accuracy.
+
+Run `npm test` to reproduce it. The same scope and metrics are visible to officers under **ระบบ AI** in Demo Mode.
+
+## Competition demo path
+
+1. Citizen submits evidence and receives `R-10824`.
+2. Switch Demo Mode to Officer and open the priority incident.
+3. Inspect the map/evidence, then accept the incident for review.
+4. Review the AI-prepared report and explicitly forward it.
+
+The Officer Console keeps this four-step path visible and does not perform autonomous submission.
 
 ## Configuration
 
