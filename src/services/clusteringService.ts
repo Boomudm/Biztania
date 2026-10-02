@@ -1,0 +1,6 @@
+import type { Report, Similarity } from '../types'
+const toRad = (n:number) => n * Math.PI / 180
+export function distanceMeters(a:Report,b:Report){ const R=6371e3,dLat=toRad(b.latitude-a.latitude),dLon=toRad(b.longitude-a.longitude); const x=Math.sin(dLat/2)**2+Math.cos(toRad(a.latitude))*Math.cos(toRad(b.latitude))*Math.sin(dLon/2)**2; return 2*R*Math.atan2(Math.sqrt(x),Math.sqrt(1-x)) }
+export function similarity(a:Report,b:Report):Similarity { const distanceM=distanceMeters(a,b); const timeMinutes=Math.abs(new Date(a.timestamp).getTime()-new Date(b.timestamp).getTime())/60000; const overlap=a.observations.filter(o=>b.observations.includes(o)).length; const union=new Set([...a.observations,...b.observations]).size; const spatial=Math.max(0,1-distanceM/600); const temporal=Math.max(0,1-timeMinutes/180); const semantic=union?overlap/union:0; return {spatial,temporal,semantic,total:.4*spatial+.3*temporal+.3*semantic,distanceM,timeMinutes} }
+export function buildDemoCluster(all:Report[]){ const centre=all.find(r=>r.id==='R-108')!; return all.filter(r=>distanceMeters(centre,r)<=500 && Math.abs(new Date(centre.timestamp).getTime()-new Date(r.timestamp).getTime())<=2*60*60*1000) }
+export const demoClusterConfidence = 91

@@ -1,0 +1,2 @@
+import type { Observation } from '../types'
+export async function analyzeReport(description:string):Promise<Observation[]> { await new Promise(r=>setTimeout(r,250)); const found:Observation[]=[]; if(/คราบ|สีรุ้ง/.test(description)) found.push('rainbow-film'); if(/กลิ่น/.test(description)) found.push('strong-odor'); if(/ปลาตาย/.test(description)) found.push('dead-fish'); if(/สีเปลี่ยน/.test(description)) found.push('discolored-water'); return found }
