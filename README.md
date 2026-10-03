@@ -102,3 +102,7 @@ npm run dev
 npm test
 npm run build
 ```
+
+## Deployment
+
+The production server serves both the Vite build and `/api` from one process. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for the Render setup, environment variables, health check, and demo checklist.
