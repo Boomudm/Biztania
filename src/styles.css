@@ -66,6 +66,10 @@ header {
   font: 800 20px Manrope;
   color: #083f34;
 }
+.brand b em {
+  color: #075a48;
+  font-style: normal;
+}
 .brand small {
   font-size: 8px;
   letter-spacing: 2px;
@@ -73,19 +77,16 @@ header {
   margin-top: 5px;
 }
 .logo {
-  width: 39px;
-  height: 39px;
-  border-radius: 12px;
-  background: #005b45;
-  color: #c8f36b;
+  width: 43px;
+  height: 43px;
+  background: transparent;
   display: grid;
   place-items: center;
   position: relative;
 }
 .logo svg {
-  width: 22px;
-  height: 22px;
-  stroke-width: 2.2;
+  width: 43px;
+  height: 43px;
 }
 .doc-head .brand b {
   color: #083f34;
@@ -94,9 +95,8 @@ header {
   color: #08785c;
 }
 .doc-head .logo {
-  background: #005b45;
-  color: #c8f36b;
-  box-shadow: 0 5px 14px rgba(0, 91, 69, 0.18);
+  background: transparent;
+  box-shadow: none;
 }
 .header-actions,
 .hero-actions,
@@ -1910,8 +1910,21 @@ body {
 }
 .logo svg:first-child,
 .logo svg:last-child {
-  width: 22px;
-  height: 22px;
+  width: 43px;
+  height: 43px;
+}
+.eco-alert-mark {
+  display: block;
+  overflow: visible;
+}
+.eco-alert-mark .mark-dark {
+  stroke: #075a48;
+}
+.eco-alert-mark .mark-lime {
+  stroke: #92d923;
+}
+.eco-alert-mark .mark-dark-fill {
+  fill: #075a48;
 }
 .header-actions svg,
 .badge svg,

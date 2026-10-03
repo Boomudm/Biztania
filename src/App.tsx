@@ -52,13 +52,44 @@ const cluster = buildDemoCluster(reports),
   otherReports = reports.filter((r) => !cluster.some((c) => c.id === r.id)),
   risk = assessRisk(cluster);
 const evaluation = evaluateDemoCluster();
+const EcoAlertMark = () => (
+  <svg
+    className="eco-alert-mark"
+    viewBox="0 0 64 64"
+    fill="none"
+    aria-hidden="true"
+  >
+    <path
+      className="mark-dark"
+      d="M10 24C13.8 12.5 22 7 32 7s18.2 5.5 22 17"
+      strokeWidth="7"
+      strokeLinecap="round"
+    />
+    <path
+      className="mark-lime"
+      d="M8 31c8-5.5 15-5.5 23 0s15 5.5 25 0"
+      strokeWidth="7"
+      strokeLinecap="round"
+    />
+    <path
+      className="mark-dark"
+      d="M12 42c7-4.5 13-4.5 20 0s13 4.5 20 0"
+      strokeWidth="7"
+      strokeLinecap="round"
+    />
+    <path className="mark-dark-fill" d="M21 50h22L32 62 21 50Z" />
+  </svg>
+);
 const Logo = () => (
   <div className="brand">
     <span className="logo">
-      <Waves />
+      <EcoAlertMark />
     </span>
     <span>
-      <b>Eco-Alert</b>
+      <b>
+        <span>Eco-</span>
+        <em>Alert</em>
+      </b>
       <small>ผู้ช่วยเฝ้าระวังสิ่งแวดล้อม</small>
     </span>
   </div>
