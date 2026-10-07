@@ -1,22 +1,25 @@
-# Deploy Eco-Alert ขึ้น Render
+# Deploy Eco-Alert ขึ้น Vercel
 
-โปรเจกต์นี้ deploy เป็น **Web Service เดียว** ได้: Express ให้บริการทั้ง `/api/*` และไฟล์ frontend ที่ Vite build ไว้ใน `dist/` จึงไม่ต้องแยก frontend/backend และไม่ต้องตั้ง CORS เพิ่ม
+โปรเจกต์นี้ deploy บน Vercel เป็น 2 ส่วนภายใต้ domain เดียวกัน:
 
-## ค่าที่ใช้บน Render
+- Vite build ใน `dist/` เป็น static frontend
+- ไฟล์ใน `api/` เป็น Vercel Functions สำหรับ `/api/health`, `/api/analyze` และ `/api/submit`
 
-| ช่อง | ค่า |
-|---|---|
-| Runtime | Node |
-| Branch | `main` |
-| Build Command | `npm ci && npm run build` |
-| Start Command | `npm start` |
-| Health Check Path | `/api/health` |
+จึงไม่ต้องเปิด Express port ค้าง และ frontend ยังเรียก `/api/*` ด้วย URL เดิม
 
-โปรเจกต์กำหนดช่วง Node.js ที่รองรับไว้ที่ major version 22–26 ผ่าน `package.json` เพื่อไม่ให้ production เลือก runtime ที่เก่าหรือใหม่เกินช่วงที่ทดสอบ
+## ขั้นตอนผ่าน Vercel Dashboard
 
-## Environment variables
+1. Push branch `main` ขึ้น GitHub
+2. เข้า Vercel แล้วเลือก **Add New → Project**
+3. Import repository `Boomudm/Biztania`
+4. Vercel จะอ่านค่าจาก `vercel.json` โดยใช้ Vite, `npm run build` และ output directory `dist`
+5. เพิ่ม Environment Variables
+6. กด **Deploy**
+7. หลัง deploy เปิด `/api/health` และตรวจว่าตอบ `ok: true`
 
-ตั้งในหน้า **Environment** ของ Render ห้ามใส่ secret ลง GitHub
+## Environment Variables
+
+ตั้งใน **Project Settings → Environment Variables** และเลือก Production/Preview ตามต้องการ ห้ามใส่ secret ลง GitHub
 
 | Key | ค่าแนะนำ | จำเป็นหรือไม่ |
 |---|---|---|
@@ -27,32 +30,21 @@
 | `TRAFFY_API_BASE_URL` | URL ของ API | ใช้เมื่อ `TRAFFY_LIVE=true` |
 | `TRAFFY_API_KEY` | API key | ใช้เมื่อ API ต้องยืนยันตัวตน |
 
-ไม่ต้องตั้ง `PORT` เอง เพราะแอปอ่านค่าที่ Render กำหนดให้ และรับ traffic ที่ `0.0.0.0`
-
-## ขั้นตอน
-
-1. Push branch `main` ขึ้น GitHub
-2. เข้า Render แล้วเลือก **New → Web Service**
-3. เชื่อม GitHub และเลือก repository นี้
-4. กรอกค่าจากตารางด้านบน เลือก region ใกล้ผู้ใช้ และเลือกแผนที่ต้องการ
-5. เพิ่ม environment variables โดยเริ่มจาก `DEMO_MODE=true` และ `TRAFFY_LIVE=false`
-6. กด **Create Web Service** แล้วรอ build และ health check ผ่าน
-7. เปิด URL `*.onrender.com` และทดสอบ `/api/health`
-
-เมื่อเปิด Auto-Deploy ทุกครั้งที่ push เข้า `main` Render จะ build และ deploy เวอร์ชันใหม่ให้อัตโนมัติ
+ไม่ต้องตั้ง `PORT` เพราะ Vercel เรียก API เป็น Functions ไม่ได้รัน `npm start`
 
 ## Checklist ก่อนวัน Demo
 
-- หน้าแรกเปิดและ refresh URL ย่อยได้โดยไม่เป็น 404
+- หน้าแรกเปิดได้และ refresh route ย่อยไม่เป็น 404
 - `/api/health` ตอบ `ok: true`
+- `/api/analyze` ทำงานใน Demo Mode แม้ไม่มี OpenAI key
 - ทดลองครบ 3 เคส PB-024, PB-031 และ PB-041
-- ทดสอบทั้งกรณีมีและไม่มี `OPENAI_API_KEY`
-- ตรวจว่า GitHub ไม่มีไฟล์ `.env` หรือ API key
-- เปิดเว็บจริงบน Wi-Fi/อุปกรณ์ที่จะใช้ present
+- ตรวจว่า GitHub ไม่มี `.env` หรือ API key
+- เปิดเว็บ Production บนอุปกรณ์ที่จะใช้ present
 
-## หาก deploy ไม่ผ่าน
+## หาก Deploy ไม่ผ่าน
 
-- **Build failed:** เปิด Deploy logs แล้วลอง `npm ci`, `npm run build`, `npm test` ในเครื่อง
-- **Health check failed:** ตรวจว่า Start Command คือ `npm start` และ path คือ `/api/health`
-- **หน้าเว็บเปิดได้แต่ AI ไม่ทำงาน:** ตรวจ `OPENAI_API_KEY`; หากต้อง demo ทันทีให้ตั้ง `DEMO_MODE=true`
-- **Traffy ล่มหรือยังไม่มีสิทธิ์:** ตั้ง `TRAFFY_LIVE=false` เพื่อใช้ข้อมูลจำลอง
+- **Build failed:** เปิด Build Logs และทดสอบ `npm ci`, `npm run build`, `npm test` ในเครื่อง
+- **หน้าเว็บ 404 เมื่อ refresh:** ตรวจว่า Vercel ใช้ `vercel.json` จาก repository root
+- **API 404:** ตรวจว่าไฟล์ `api/health.ts`, `api/analyze.ts`, `api/submit.ts` อยู่ใน deployment
+- **AI ไม่ทำงาน:** ตรวจ Environment Variable `OPENAI_API_KEY`; สำหรับ demo ให้ใช้ `DEMO_MODE=true`
+- **Traffy ยังไม่พร้อม:** ตั้ง `TRAFFY_LIVE=false`

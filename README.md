@@ -105,4 +105,4 @@ npm run build
 
 ## Deployment
 
-The production server serves both the Vite build and `/api` from one process. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for the Render setup, environment variables, health check, and demo checklist.
+Vercel serves the Vite frontend and the three `/api` endpoints as Functions under one domain. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for setup, environment variables, health checks, and the demo checklist.
